@@ -70,7 +70,7 @@ export default function Home() {
       setError(null);
       
       const res = await convex.query('app/nylas:listInboxTasks' as any, {
-        limit: 50,
+        limit: 300,
         cursor,
       });
       
