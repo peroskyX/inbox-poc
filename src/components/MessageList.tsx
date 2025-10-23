@@ -94,7 +94,7 @@ interface ToolApprovalCardProps {
   toolName: string;
   toolCallId: string;
   input: Record<string, unknown> | undefined;
-  onAddToolResult: (result: {
+  onAddToolResult?: (result: {
     toolCallId: string;
     tool: string;
     output: string;
@@ -175,7 +175,7 @@ function BatchToolApprovalCard({
     if (!approved) {
       try {
         setSubmitting(true);
-        await onAddToolResult({
+        await onAddToolResult?.({
           toolCallId,
           tool: toolName,
           output: "denied",
@@ -203,7 +203,7 @@ function BatchToolApprovalCard({
     try {
       setSubmitting(true);
       setError(null);
-      await onAddToolResult({
+      await onAddToolResult?.({
         toolCallId,
         tool: toolName,
         output: "approved",
@@ -402,7 +402,7 @@ function BatchCreateApprovalCard({
     try {
       setSubmitting(true);
       setError(null);
-      await onAddToolResult({
+      await onAddToolResult?.({
         toolCallId,
         tool: toolName,
         output: approved ? "approved" : "denied",
@@ -533,7 +533,7 @@ function BatchRemoveApprovalCard({
     if (!approved) {
       try {
         setSubmitting(true);
-        await onAddToolResult({
+        await onAddToolResult?.({
           toolCallId,
           tool: toolName,
           output: "denied",
@@ -561,7 +561,7 @@ function BatchRemoveApprovalCard({
     try {
       setSubmitting(true);
       setError(null);
-      await onAddToolResult({
+      await onAddToolResult?.({
         toolCallId,
         tool: toolName,
         output: "approved",
@@ -803,7 +803,7 @@ function ToolApprovalCard({
     try {
       setSubmitting(true);
       setError(null);
-      await onAddToolResult({
+      await onAddToolResult?.({
         toolCallId,
         tool: toolName,
         output: approved ? "approved" : "denied",
@@ -1020,7 +1020,7 @@ function Message({
   onAddToolResult,
 }: {
   message: UIMessage;
-  onAddToolResult: (result: {
+  onAddToolResult?: (result: {
     toolCallId: string;
     tool: string;
     output: string;
@@ -1171,7 +1171,7 @@ function Message({
                       toolName={toolName}
                       toolCallId={toolCallId}
                       input={input}
-                      onAddToolResult={onAddToolResult}
+                      onAddToolResult={onAddToolResult || (() => Promise.resolve())}
                     />
                   );
                 }
@@ -1182,7 +1182,7 @@ function Message({
                       toolName={toolName}
                       toolCallId={toolCallId}
                       input={input}
-                      onAddToolResult={onAddToolResult}
+                      onAddToolResult={onAddToolResult || (() => Promise.resolve())}
                     />
                   );
                 }
@@ -1193,7 +1193,7 @@ function Message({
                       toolName={toolName}
                       toolCallId={toolCallId}
                       input={input}
-                      onAddToolResult={onAddToolResult}
+                      onAddToolResult={onAddToolResult || (() => Promise.resolve())}
                     />
                   );
                 }
@@ -1258,7 +1258,6 @@ export default function MessageList({
   );
 
   const realMessages = toUIMessages((messages.results ?? []) as any);
-  const sendToolResult = useMutation(api.app.chat.sendToolResult);
 
   // Clear optimistic messages when real messages appear
   useEffect(() => {
@@ -1288,28 +1287,6 @@ export default function MessageList({
     onPendingApprovalChange(hasPendingApproval);
   }, [uiMessages, onPendingApprovalChange]);
 
-  // Tool result handling function
-  const handleAddToolResult = async (result: {
-    toolCallId: string;
-    tool: string;
-    output: string;
-    payload?: ToolResultPayload;
-  }) => {
-    console.log("Tool result:", result);
-    try {
-      await sendToolResult({
-        toolResult: {
-          toolCallId: result.toolCallId,
-          tool: result.tool,
-          output: result.output,
-          payload: result.payload,
-        },
-        threadId,
-      });
-    } catch (error) {
-      console.error("Failed to send tool result:", error);
-    }
-  };
 
   if (messages.isLoading && !messages.results) {
     return (
@@ -1337,7 +1314,6 @@ export default function MessageList({
           <Message
             key={message.key}
             message={message}
-            onAddToolResult={handleAddToolResult}
           />
         ))}
       </div>
