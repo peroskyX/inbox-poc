@@ -15,16 +15,19 @@ interface InboxTask {
   from?: { email: string; name?: string }[];
   to?: { email: string; name?: string }[];
   title: string;
-  sentence?: string;
-  actionType?: 'do' | 'schedule' | 'delegate' | 'defer';
   ownership?: 'user' | 'other' | 'unknown';
   contextBefore?: string;
   contextAfter?: string;
   detectedDeadlineText?: string;
   detectedDeadlineISO?: string | null;
   confidence: number;
-  status: 'pending_confirmation' | 'confirmed' | 'ignored';
+  status: 'pending_confirmation' | 'confirmed' | 'ignored' | 'resolved';
   receivedAt?: string;
+  tag?: 'admin' | 'creative' | 'deep' | 'personal';
+  priority?: 'high' | 'medium' | 'low';
+  estimatedDuration?: number | null;
+  gmailWebUrl?: string;
+  summary?: string;
 }
 
 
@@ -69,7 +72,7 @@ export default function Home() {
       setLoading(true);
       setError(null);
       
-      const res = await convex.query('app/nylas:listInboxTasks' as any, {
+      const res = await convex.query('app/nylas:listInboxs' as any, {
         limit: 300,
         cursor,
       });
@@ -104,23 +107,41 @@ export default function Home() {
     });
   };
 
-  const getActionTypeColor = (actionType?: string) => {
-    switch (actionType) {
-      case 'do': return 'bg-red-100 text-red-800';
-      case 'schedule': return 'bg-blue-100 text-blue-800';
-      case 'delegate': return 'bg-purple-100 text-purple-800';
-      case 'defer': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed': return 'bg-green-100 text-green-800';
       case 'pending_confirmation': return 'bg-orange-100 text-orange-800';
       case 'ignored': return 'bg-gray-100 text-gray-800';
+      case 'resolved': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const getTagColor = (tag?: string) => {
+    switch (tag) {
+      case 'admin': return 'bg-purple-100 text-purple-800';
+      case 'creative': return 'bg-pink-100 text-pink-800';
+      case 'deep': return 'bg-indigo-100 text-indigo-800';
+      case 'personal': return 'bg-teal-100 text-teal-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getPriorityColor = (priority?: string) => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const formatDuration = (minutes?: number | null) => {
+    if (!minutes) return 'N/A';
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
   };
 
   if (!isLoaded) {
@@ -283,10 +304,15 @@ export default function Home() {
                         </p>
                       )}
                     </div>
-                    <div className="flex gap-2">
-                      {task.actionType && (
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getActionTypeColor(task.actionType)}`}>
-                          {task.actionType}
+                    <div className="flex gap-2 flex-wrap">
+                      {task.tag && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTagColor(task.tag)}`}>
+                          {task.tag}
+                        </span>
+                      )}
+                      {task.priority && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                          {task.priority}
                         </span>
                       )}
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
@@ -295,8 +321,11 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {task.sentence && (
-                    <p className="text-gray-700 mb-3">{task.sentence}</p>
+                  {task.summary && (
+                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-xs font-medium text-blue-900 mb-1">Summary</p>
+                      <p className="text-sm text-gray-800 leading-relaxed">{task.summary}</p>
+                    </div>
                   )}
 
                    <div className="grid grid-cols-2 gap-4 text-sm">
@@ -326,6 +355,32 @@ export default function Home() {
                          <span className="text-gray-500">Received:</span>
                          <p className="text-gray-900">
                            {formatDate(task.receivedAt)}
+                         </p>
+                       </div>
+                     )}
+                     {task.estimatedDuration !== undefined && task.estimatedDuration !== null && (
+                       <div>
+                         <span className="text-gray-500">Est. Duration:</span>
+                         <p className="text-gray-900">
+                           {formatDuration(task.estimatedDuration)}
+                         </p>
+                       </div>
+                     )}
+                     {task.gmailWebUrl && (
+                       <div>
+                         <span className="text-gray-500">Source:</span>
+                         <p className="text-gray-900">
+                           <a 
+                             href={task.gmailWebUrl} 
+                             target="_blank" 
+                             rel="noopener noreferrer"
+                             className="text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                           >
+                             View in Gmail
+                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                             </svg>
+                           </a>
                          </p>
                        </div>
                      )}
